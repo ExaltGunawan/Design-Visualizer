@@ -3,9 +3,14 @@
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
+use App\Http\Controllers\Api\VisualizerController;
+
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::get('/api/products', [VisualizerController::class, 'getProducts']);
+Route::get('/api/patterns', [VisualizerController::class, 'getPatterns']);
 
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\GridPresetController;

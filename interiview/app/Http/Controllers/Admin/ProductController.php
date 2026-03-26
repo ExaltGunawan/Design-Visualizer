@@ -28,8 +28,8 @@ class ProductController extends Controller
         $request->validate([
             'category_id' => 'required',
             'name' => 'required|string|max:100',
-            'base_image' => 'required|image|mimes:png',
-            'shadow_overlay' => 'required|image|mimes:png',
+            'base_image' => 'required|image',
+            'shadow_overlay' => 'required|image',
             'grid_presets' => 'required|array'
         ]);
 

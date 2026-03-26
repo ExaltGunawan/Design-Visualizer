@@ -11,6 +11,16 @@
                 <div class="p-6 text-gray-900">
                     <form method="POST" action="{{ route('admin.products.store') }}" enctype="multipart/form-data">
                         @csrf
+                        @if ($errors->any())
+                            <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+                                <strong>Whoops! Something went wrong.</strong>
+                                <ul class="mt-2 list-disc list-inside text-sm">
+                                    @foreach ($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
                         <div class="grid grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label class="block text-gray-700 text-sm font-bold mb-2">Product Name</label>
