@@ -37,12 +37,46 @@ class PatternController extends Controller
     }
 
     public function show(string $id) {}
-    public function edit(string $id) {}
-    public function update(Request $request, string $id) {}
+
+    public function edit(string $id)
+    {
+        $pattern = Pattern::findOrFail($id);
+        return view('admin.patterns.edit', compact('pattern'));
+    }
+
+    public function update(Request $request, string $id)
+    {
+        $pattern = Pattern::findOrFail($id);
+
+        $request->validate([
+            'name' => 'required|string|max:100',
+            'file_path' => 'nullable|image|mimes:jpeg,png,jpg'
+        ]);
+
+        $path = $pattern->file_path;
+        if ($request->hasFile('file_path')) {
+            if (\Storage::disk('public')->exists($pattern->file_path)) {
+                \Storage::disk('public')->delete($pattern->file_path);
+            }
+            $path = $request->file('file_path')->store('patterns', 'public');
+        }
+
+        $pattern->update([
+            'name' => $request->name,
+            'file_path' => $path,
+        ]);
+
+        return redirect()->route('admin.patterns.index')->with('success', 'Pattern updated successfully.');
+    }
 
     public function destroy(string $id)
     {
-        Pattern::findOrFail($id)->delete();
+        $pattern = Pattern::findOrFail($id);
+        if (\Storage::disk('public')->exists($pattern->file_path)) {
+            \Storage::disk('public')->delete($pattern->file_path);
+        }
+        $pattern->delete();
+
         return redirect()->route('admin.patterns.index')->with('success', 'Pattern deleted successfully.');
     }
 }

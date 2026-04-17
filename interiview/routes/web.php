@@ -5,9 +5,9 @@ use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Api\VisualizerController;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+use App\Http\Controllers\HomeController;
+
+Route::get('/', [HomeController::class, 'index'])->name('home');
 
 Route::get('/api/products', [VisualizerController::class, 'getProducts']);
 Route::get('/api/patterns', [VisualizerController::class, 'getPatterns']);

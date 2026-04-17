@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); width: 400px; height: 400px; border: 1px solid black; }
+  .grid div { border: 1px solid red; }
+</style>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body>
+<div x-data="{ grid: { rows: 4, cols: 4 } }" class="grid">
+    <template x-for="r in grid.rows">
+        <template x-for="c in grid.cols">
+            <div x-text="r + ',' + c"></div>
+        </template>
+    </template>
+</div>
+</body>
+</html>

@@ -41,7 +41,8 @@
                                 <td class="px-6 py-4">
                                     <img src="{{ asset('storage/' . $product->shadow_overlay) }}" alt="Shadow" class="h-12 w-12 object-cover rounded">
                                 </td>
-                                <td class="px-6 py-4 text-right flex justify-end">
+                                <td class="px-6 py-4 text-right flex justify-end gap-2">
+                                    <a href="{{ route('admin.products.edit', $product->id) }}" class="text-blue-600 hover:text-blue-900">Edit</a>
                                     <form action="{{ route('admin.products.destroy', $product->id) }}" method="POST" onsubmit="return confirm('Delete this product?')">
                                         @csrf
                                         @method('DELETE')

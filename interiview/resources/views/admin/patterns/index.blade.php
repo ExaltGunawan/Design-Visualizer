@@ -35,7 +35,8 @@
                                     <img src="{{ asset('storage/' . $pattern->file_path) }}" alt="{{ $pattern->name }}" class="h-16 w-16 object-cover rounded shadow">
                                 </td>
                                 <td class="px-6 py-4 font-semibold">{{ $pattern->name }}</td>
-                                <td class="px-6 py-4 text-right flex justify-end">
+                                <td class="px-6 py-4 text-right flex justify-end gap-2">
+                                    <a href="{{ route('admin.patterns.edit', $pattern->id) }}" class="text-blue-600 hover:text-blue-900">Edit</a>
                                     <form action="{{ route('admin.patterns.destroy', $pattern->id) }}" method="POST" onsubmit="return confirm('Delete this pattern?')">
                                         @csrf
                                         @method('DELETE')
