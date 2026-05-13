@@ -24,6 +24,8 @@ Route::get('/dashboard', function () {
 Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(function () {
     Route::resource('categories', CategoryController::class);
     Route::resource('products', ProductController::class);
+    Route::get('patterns/batch', [PatternController::class, 'batchCreate'])->name('patterns.batch');
+    Route::post('patterns/batch', [PatternController::class, 'batchStore'])->name('patterns.batch.store');
     Route::resource('patterns', PatternController::class);
     Route::resource('grid-presets', GridPresetController::class);
 });

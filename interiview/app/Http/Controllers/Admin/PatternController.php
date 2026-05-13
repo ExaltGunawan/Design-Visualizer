@@ -19,6 +19,42 @@ class PatternController extends Controller
         return view('admin.patterns.create');
     }
 
+    public function batchCreate()
+    {
+        return view('admin.patterns.batch');
+    }
+
+    public function batchStore(Request $request)
+    {
+        $request->validate([
+            'files' => 'required',
+            'files.*' => 'image|mimes:jpeg,png,jpg'
+        ]);
+
+        $files = $request->file('files');
+        $count = 0;
+
+        foreach ($files as $file) {
+            // Get filename without extension
+            $originalName = $file->getClientOriginalName();
+            $name = pathinfo($originalName, PATHINFO_FILENAME);
+            
+            // Clean up name (replace underscores/dashes with spaces, capitalize)
+            $name = ucwords(str_replace(['_', '-'], ' ', $name));
+
+            $path = $file->store('patterns', 'public');
+
+            Pattern::create([
+                'name' => $name,
+                'file_path' => $path,
+            ]);
+
+            $count++;
+        }
+
+        return redirect()->route('admin.patterns.index')->with('success', "$count patterns created successfully via batch upload.");
+    }
+
     public function store(Request $request)
     {
         $request->validate([

@@ -96,14 +96,19 @@
                     <h2 class="text-sm font-semibold mb-3">3. Patterns</h2>
                     <div class="grid grid-cols-2 gap-3">
                         <template x-for="pattern in patterns" :key="pattern.id">
-                            <div class="draggable-pattern cursor-grab hover:scale-105 transition-transform" 
+                            <div class="draggable-pattern cursor-grab hover:scale-105 transition-all p-1 rounded-md" 
+                                :class="activePattern && activePattern.id === pattern.id ? 'bg-blue-100 ring-2 ring-blue-500 shadow-md' : 'hover:bg-gray-100'"
                                 draggable="true" 
+                                @click="selectPattern(pattern)"
                                 @dragstart="dragStart($event, pattern)">
-                                <p class="text-xs text-center mb-1 truncate" x-text="pattern.name"></p>
+                                <p class="text-xs text-center mb-1 truncate font-medium" :class="activePattern && activePattern.id === pattern.id ? 'text-blue-700' : 'text-gray-700'" x-text="pattern.name"></p>
                                 <img :src="'/storage/' + pattern.file_path" :alt="pattern.name" class="w-full h-24 object-cover border border-gray-200 rounded shadow-sm">
                             </div>
                         </template>
                     </div>
+                    <p class="text-[10px] text-gray-500 mt-3 text-center bg-gray-100 p-2 rounded">
+                        You can <span class="text-blue-600 font-semibold">drag patterns</span>, or <span class="text-blue-600 font-semibold">click to select one</span> and then tap the grid to apply it.
+                    </p>
                 </div>
             </div>
         </aside>
@@ -147,9 +152,9 @@
                     <img x-ref="shadowOverlay" class="hidden" @load="handleImageLoad()">
 
                     <!-- The interactive canvas container tightly wrapping the canvas -->
-                    <div x-show="selectedProduct" class="relative max-w-full max-h-[80vh] flex items-center justify-center mx-auto" :style="`aspect-ratio: ${imageAspectRatio};`" x-ref="canvasContainer">
+                    <div x-show="selectedProduct" class="relative w-full max-w-5xl h-[50vh] lg:h-[70vh] flex items-center justify-center mx-auto" :style="`aspect-ratio: ${imageAspectRatio};`" x-ref="canvasContainer">
                         <!-- Main Canvas -->
-                        <canvas x-ref="mainCanvas" class="w-full h-full object-contain pointer-events-none drop-shadow-md rounded"></canvas>
+                        <canvas x-ref="mainCanvas" class="max-w-full max-h-full object-contain pointer-events-none drop-shadow-md rounded"></canvas>
                         
                         <!-- Grid Overlay (Interactive drop zones) -->
                         <div class="absolute inset-0 grid" 
@@ -158,7 +163,8 @@
                              style="z-index: 20;">
                              <template x-for="(r, rIndex) in Array.from({length: gridConfig.rows})" :key="'r'+rIndex">
                                 <template x-for="(c, cIndex) in Array.from({length: gridConfig.cols})" :key="'c'+cIndex">
-                                    <div class="border border-dashed border-gray-400/50 hover:bg-blue-500/10 transition-colors"
+                                    <div class="border border-dashed border-gray-400/50 hover:bg-blue-500/10 transition-colors cursor-pointer"
+                                         @click="applyActivePattern(rIndex, cIndex)"
                                          @dragover.prevent=""
                                          @drop="dropPattern($event, rIndex, cIndex)">
                                     </div>
@@ -167,9 +173,10 @@
                         </div>
 
                         <!-- Single overlay drop zone (when no grid selected) -->
-                        <div class="absolute inset-0 hover:bg-blue-500/10 transition-colors border border-dashed border-transparent hover:border-gray-400" 
+                        <div class="absolute inset-0 hover:bg-blue-500/10 transition-colors border border-dashed border-transparent hover:border-gray-400 cursor-pointer" 
                              x-show="gridConfig.rows === 1 && gridConfig.cols === 1"
                              style="z-index: 20;"
+                             @click="applyActivePattern(0, 0)"
                              @dragover.prevent=""
                              @drop="dropPattern($event, 0, 0)">
                         </div>
@@ -181,7 +188,7 @@
             <!-- Footer indicator -->
             <div x-show="selectedProduct" class="fixed flex justify-center pointer-events-none z-50 dynamic-pill-pos">
                 <div class="bg-blue-50/90 backdrop-blur px-5 py-2.5 rounded-full text-xs text-blue-700 shadow-md border border-blue-200 font-medium tracking-wide">
-                    ✦ Drag a pattern and drop it over a grid cell.
+                    ✦ Drag a pattern or click a selected pattern to apply to grid.
                 </div>
             </div>
         </main>
@@ -200,6 +207,9 @@
                 availableGridPresets: [],
                 selectedGridPresetId: '',
                 
+                // Active Latch / Selected Pattern Tool
+                activePattern: null,
+
                 // Fix for 3D inverted Y-axis renders
                 reverseY: true,
 
@@ -239,6 +249,7 @@
                 onProductChange() {
                     const id = parseInt(this.selectedProductId);
                     this.selectedProduct = this.products.find(p => p.id === id) || null;
+                    this.activePattern = null; // reset active pattern on change
                     
                     if (this.selectedProduct) { // Load presets and images
                         this.availableGridPresets = this.selectedProduct.grid_presets || [];
@@ -286,7 +297,27 @@
                     this.resetDesign();
                 },
                 
+                selectPattern(pattern) {
+                    // Toggle to clear selection if clicked again, otherwise select
+                    if (this.activePattern && this.activePattern.id === pattern.id) {
+                        this.activePattern = null;
+                    } else {
+                        this.activePattern = pattern;
+                    }
+                },
+
+                applyActivePattern(row, col) {
+                    if (!this.activePattern) return;
+                    
+                    // Same logic as dropping, apply Y mapping
+                    const mappedRow = this.reverseY ? (this.gridConfig.rows - 1 - row) : row;
+                    this.gridData[mappedRow][col] = '/storage/' + this.activePattern.file_path;
+                    this.drawCanvas();
+                },
+                
                 dragStart(event, pattern) {
+                    // Optionally set as active pattern when dragging too
+                    this.activePattern = pattern;
                     event.dataTransfer.setData('text/plain', JSON.stringify(pattern));
                     event.dataTransfer.effectAllowed = 'copy';
                 },
@@ -330,20 +361,27 @@
                     const canvas = this.$refs.mainCanvas;
                     const ctx = canvas.getContext('2d');
                     
-                    // Match canvas internal resolution to the base image intrinsic size for high quality
+                    // NORMALIZE: Always use a consistent internal base resolution (e.g. 1024px)
+                    // so that patterns look the same regardless of source image size.
+                    const baseRes = 1024;
                     const imgWidth = this.$refs.baseImage.naturalWidth || 800;
                     const imgHeight = this.$refs.baseImage.naturalHeight || 800;
-                    canvas.width = imgWidth;
-                    canvas.height = imgHeight;
+                    
+                    const scale = Math.min(baseRes / imgWidth, baseRes / imgHeight);
+                    canvas.width = imgWidth * scale;
+                    canvas.height = imgHeight * scale;
+                    
+                    const drawWidth = canvas.width;
+                    const drawHeight = canvas.height;
                     
                     // 1. Draw Pattern Grid into an offscreen canvas
                     const patternCanvas = document.createElement('canvas');
-                    patternCanvas.width = imgWidth;
-                    patternCanvas.height = imgHeight;
+                    patternCanvas.width = drawWidth;
+                    patternCanvas.height = drawHeight;
                     const ptx = patternCanvas.getContext('2d');
                     
-                    const cellWidth = imgWidth / this.gridConfig.cols;
-                    const cellHeight = imgHeight / this.gridConfig.rows;
+                    const cellWidth = drawWidth / this.gridConfig.cols;
+                    const cellHeight = drawHeight / this.gridConfig.rows;
                     
                     // Load and draw patterns for each cell
                     const drawPromises = [];
@@ -363,8 +401,13 @@
                                         
                                         const pattern = ptx.createPattern(img, 'repeat');
                                         
-                                        // Optional: Scale the pattern to make it look nicer. Let's say 25% scale.
-                                        const domMatrix = new DOMMatrix().scale(0.3, 0.3);
+                                        // IMPROVED SCALE: Instead of scaling per cell, scale relative to the 
+                                        // WHOLE canvas width so patterns look natural regardless of grid size.
+                                        // Target: Show roughly 3.5 repetitions across the entire product width.
+                                        const targetSize = drawWidth / 3.5; 
+                                        const scaleFactor = targetSize / img.width;
+                                        
+                                        const domMatrix = new DOMMatrix().scale(scaleFactor, scaleFactor);
                                         pattern.setTransform(domMatrix);
                                         
                                         ptx.fillStyle = pattern;
