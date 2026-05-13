@@ -80,13 +80,15 @@
                     </select>
                 </div>
 
-                <!-- 2. Select Grid -->
+                <!-- 2. Select Grid Layout -->
                 <div x-show="selectedProduct">
-                    <h2 class="text-sm font-semibold mb-3">2. Select Grid</h2>
-                    <select x-model="selectedGridPresetId" @change="onGridChange()" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-gray-50">
-                        <option value="">No Grid (Single Pattern)</option>
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-sm font-semibold text-gray-800">2. Select Layout</h2>
+                    </div>
+                    <select x-model="selectedGridPresetId" @change="onGridChange()" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-gray-50 text-sm">
+                        <option value="" x-text="selectedProduct && selectedProduct.grid_zones && selectedProduct.grid_zones.length > 0 ? 'Default: Custom Mapping' : 'Default: No Grid (Single)'"></option>
                         <template x-for="preset in availableGridPresets" :key="preset.id">
-                            <option :value="preset.id" x-text="preset.label"></option>
+                            <option :value="preset.id" x-text="'Grid Layout: ' + preset.label"></option>
                         </template>
                     </select>
                 </div>
@@ -158,12 +160,11 @@
                         
                         <!-- Grid Overlay (Interactive drop zones) -->
                         <div class="absolute inset-0 grid" 
-                             x-show="gridConfig.rows > 1 || gridConfig.cols > 1"
-                             :style="`grid-template-rows: repeat(${gridConfig.rows}, 1fr); grid-template-columns: repeat(${gridConfig.cols}, 1fr);`"
-                             style="z-index: 20;">
+                             x-show="(selectedGridPresetId || !selectedProduct || !selectedProduct.grid_zones || selectedProduct.grid_zones.length === 0) && (gridConfig.rows > 1 || gridConfig.cols > 1)"
+                             :style="`grid-template-rows: repeat(${gridConfig.rows}, 1fr); grid-template-columns: repeat(${gridConfig.cols}, 1fr); z-index: 50;` ">
                              <template x-for="(r, rIndex) in Array.from({length: gridConfig.rows})" :key="'r'+rIndex">
                                 <template x-for="(c, cIndex) in Array.from({length: gridConfig.cols})" :key="'c'+cIndex">
-                                    <div class="border border-dashed border-gray-400/50 hover:bg-blue-500/10 transition-colors cursor-pointer"
+                                    <div class="border border-dashed border-blue-500/40 hover:bg-blue-500/20 transition-all cursor-pointer"
                                          @click="applyActivePattern(rIndex, cIndex)"
                                          @dragover.prevent=""
                                          @drop="dropPattern($event, rIndex, cIndex)">
@@ -172,14 +173,28 @@
                              </template>
                         </div>
 
-                        <!-- Single overlay drop zone (when no grid selected) -->
-                        <div class="absolute inset-0 hover:bg-blue-500/10 transition-colors border border-dashed border-transparent hover:border-gray-400 cursor-pointer" 
-                             x-show="gridConfig.rows === 1 && gridConfig.cols === 1"
-                             style="z-index: 20;"
+                        <!-- Single overlay drop zone (when no grid selected and no zones) -->
+                        <div class="absolute inset-0 hover:bg-blue-500/10 transition-all border border-dashed border-transparent hover:border-blue-500/40 cursor-pointer" 
+                             x-show="(selectedGridPresetId || !selectedProduct || !selectedProduct.grid_zones || selectedProduct.grid_zones.length === 0) && gridConfig.rows === 1 && gridConfig.cols === 1"
+                             style="z-index: 50;"
                              @click="applyActivePattern(0, 0)"
                              @dragover.prevent=""
                              @drop="dropPattern($event, 0, 0)">
                         </div>
+
+                        <!-- CUSTOM ZONES OVERLAY -->
+                        <template x-if="!selectedGridPresetId && selectedProduct && selectedProduct.grid_zones && selectedProduct.grid_zones.length > 0">
+                            <div class="absolute inset-0" style="z-index: 55;">
+                                <template x-for="(zone, zIndex) in selectedProduct.grid_zones" :key="zIndex">
+                                    <div class="absolute border border-dashed border-red-500/40 hover:bg-red-500/20 transition-all cursor-pointer"
+                                         :style="`left: ${zone.x}%; top: ${zone.y}%; width: ${zone.w}%; height: ${zone.h}%;`"
+                                         @click="applyActivePattern(zIndex)"
+                                         @dragover.prevent=""
+                                         @drop="dropPattern($event, zIndex)">
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
                     </div>
 
                 </div>
@@ -188,7 +203,7 @@
             <!-- Footer indicator -->
             <div x-show="selectedProduct" class="fixed flex justify-center pointer-events-none z-50 dynamic-pill-pos">
                 <div class="bg-blue-50/90 backdrop-blur px-5 py-2.5 rounded-full text-xs text-blue-700 shadow-md border border-blue-200 font-medium tracking-wide">
-                    ✦ Drag a pattern or click a selected pattern to apply to grid.
+                    ✦ Drag a pattern or click a selected pattern to apply to <span x-text="selectedProduct && selectedProduct.grid_zones && selectedProduct.grid_zones.length > 0 ? 'selected zone' : 'grid cell'"></span>.
                 </div>
             </div>
         </main>
@@ -215,7 +230,7 @@
 
                 // Grid matrix state to hold pattern URLs
                 gridConfig: { rows: 1, cols: 1 },
-                gridData: [], // 2D array of pattern paths
+                gridData: [], // 2D array OR 1D array (for zones)
                 
                 imageAspectRatio: '1 / 1',
 
@@ -249,19 +264,18 @@
                 onProductChange() {
                     const id = parseInt(this.selectedProductId);
                     this.selectedProduct = this.products.find(p => p.id === id) || null;
-                    this.activePattern = null; // reset active pattern on change
+                    this.activePattern = null; 
                     
-                    if (this.selectedProduct) { // Load presets and images
+                    if (this.selectedProduct) { 
                         this.availableGridPresets = this.selectedProduct.grid_presets || [];
-                        this.selectedGridPresetId = ''; // default to No Grid
+                        this.selectedGridPresetId = ''; 
                         
-                        // Load image sources. The @load listener on img will trigger drawCanvas
                         this.$refs.baseImage.src = '/storage/' + this.selectedProduct.base_image;
                         this.$refs.shadowOverlay.src = '/storage/' + this.selectedProduct.shadow_overlay;
                         
-                        this.onGridChange(); // Initialize grid
+                        // Initialize grid correctly
+                        this.onGridChange(); 
                     } else {
-                        // Clear canvas
                         const canvas = this.$refs.mainCanvas;
                         const ctx = canvas.getContext('2d');
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -269,26 +283,35 @@
                 },
                 
                 onGridChange() {
-                    const presetId = parseInt(this.selectedGridPresetId);
-                    const preset = this.availableGridPresets.find(p => p.id === presetId);
+                    // CASE A: Custom Zones Mode (No Grid Preset selected AND Zones exist)
+                    if (!this.selectedGridPresetId && this.selectedProduct && this.selectedProduct.grid_zones && this.selectedProduct.grid_zones.length > 0) {
+                        this.gridData = Array(this.selectedProduct.grid_zones.length).fill(null);
+                        this.drawCanvas();
+                        return;
+                    }
+
+                    // CASE B: Standard Grid Mode
+                    let preset = null;
+                    if (this.selectedGridPresetId) {
+                        const presetId = parseInt(this.selectedGridPresetId);
+                        preset = this.availableGridPresets.find(p => p.id === presetId);
+                    }
                     
                     if (preset) {
-                        const dimensionMatch = preset.label.match(/(\d+)\s*x\s*(\d+)/i); // Extract e.g. 4x4
+                        const dimensionMatch = preset.label.match(/(\d+)\s*x\s*(\d+)/i); 
                         if (dimensionMatch) {
                             this.gridConfig = { 
                                 cols: parseInt(dimensionMatch[1]), 
                                 rows: parseInt(dimensionMatch[2]) 
                             };
                         } else {
-                            this.gridConfig = { rows: 1, cols: 1 }; // Fallback
+                            this.gridConfig = { rows: 1, cols: 1 };
                         }
                     } else {
                         this.gridConfig = { rows: 1, cols: 1 };
                     }
                     
-                    // Initialize empty grid data
                     this.gridData = Array(this.gridConfig.rows).fill(null).map(() => Array(this.gridConfig.cols).fill(null));
-                    
                     this.drawCanvas();
                 },
 
@@ -298,7 +321,6 @@
                 },
                 
                 selectPattern(pattern) {
-                    // Toggle to clear selection if clicked again, otherwise select
                     if (this.activePattern && this.activePattern.id === pattern.id) {
                         this.activePattern = null;
                     } else {
@@ -306,33 +328,42 @@
                     }
                 },
 
-                applyActivePattern(row, col) {
+                applyActivePattern(arg1, arg2) {
                     if (!this.activePattern) return;
                     
-                    // Same logic as dropping, apply Y mapping
-                    const mappedRow = this.reverseY ? (this.gridConfig.rows - 1 - row) : row;
-                    this.gridData[mappedRow][col] = '/storage/' + this.activePattern.file_path;
+                    if (this.selectedProduct && this.selectedProduct.grid_zones && this.selectedProduct.grid_zones.length > 0 && !this.selectedGridPresetId) {
+                        // Custom Zones Mode
+                        this.gridData[arg1] = '/storage/' + this.activePattern.file_path;
+                    } else {
+                        // arg1=row, arg2=col
+                        const mappedRow = this.reverseY ? (this.gridConfig.rows - 1 - arg1) : arg1;
+                        this.gridData[mappedRow][arg2] = '/storage/' + this.activePattern.file_path;
+                    }
                     this.drawCanvas();
                 },
                 
                 dragStart(event, pattern) {
-                    // Optionally set as active pattern when dragging too
                     this.activePattern = pattern;
                     event.dataTransfer.setData('text/plain', JSON.stringify(pattern));
                     event.dataTransfer.effectAllowed = 'copy';
                 },
                 
-                dropPattern(event, row, col) {
+                dropPattern(event, arg1, arg2) {
                     const dataStr = event.dataTransfer.getData('text/plain');
                     if (!dataStr) return;
                     
                     try {
                         const pattern = JSON.parse(dataStr);
-                        // Apply Y-axis reflection if images are rendered from Bottom-to-Top (OpenGL standard)
-                        const mappedRow = this.reverseY ? (this.gridConfig.rows - 1 - row) : row;
-                        
-                        // Save pattern URL to specific cell
-                        this.gridData[mappedRow][col] = '/storage/' + pattern.file_path;
+                        const pUrl = '/storage/' + pattern.file_path;
+
+                        if (this.selectedProduct && this.selectedProduct.grid_zones && this.selectedProduct.grid_zones.length > 0 && !this.selectedGridPresetId) {
+                            // Custom Zones Mode
+                            this.gridData[arg1] = pUrl;
+                        } else {
+                            // arg1=row, arg2=col
+                            const mappedRow = this.reverseY ? (this.gridConfig.rows - 1 - arg1) : arg1;
+                            this.gridData[mappedRow][arg2] = pUrl;
+                        }
                         this.drawCanvas();
                     } catch (e) {
                         console.error('Invalid drop data');
@@ -340,8 +371,11 @@
                 },
                 
                 resetDesign() {
-                    // Start fresh grid data
-                    this.gridData = Array(this.gridConfig.rows).fill(null).map(() => Array(this.gridConfig.cols).fill(null));
+                    if (this.selectedProduct && this.selectedProduct.grid_zones && this.selectedProduct.grid_zones.length > 0 && !this.selectedGridPresetId) {
+                        this.gridData = Array(this.selectedProduct.grid_zones.length).fill(null);
+                    } else {
+                        this.gridData = Array(this.gridConfig.rows).fill(null).map(() => Array(this.gridConfig.cols).fill(null));
+                    }
                     this.drawCanvas();
                 },
                 
@@ -355,14 +389,12 @@
                 
                 async drawCanvas() {
                     if (!this.selectedProduct || !this.$refs.baseImage.complete || !this.$refs.shadowOverlay.complete) {
-                        return; // Wait for images to load
+                        return; 
                     }
                     
                     const canvas = this.$refs.mainCanvas;
                     const ctx = canvas.getContext('2d');
                     
-                    // NORMALIZE: Always use a consistent internal base resolution (e.g. 1024px)
-                    // so that patterns look the same regardless of source image size.
                     const baseRes = 1024;
                     const imgWidth = this.$refs.baseImage.naturalWidth || 800;
                     const imgHeight = this.$refs.baseImage.naturalHeight || 800;
@@ -374,79 +406,95 @@
                     const drawWidth = canvas.width;
                     const drawHeight = canvas.height;
                     
-                    // 1. Draw Pattern Grid into an offscreen canvas
                     const patternCanvas = document.createElement('canvas');
                     patternCanvas.width = drawWidth;
                     patternCanvas.height = drawHeight;
                     const ptx = patternCanvas.getContext('2d');
                     
-                    const cellWidth = drawWidth / this.gridConfig.cols;
-                    const cellHeight = drawHeight / this.gridConfig.rows;
-                    
-                    // Load and draw patterns for each cell
                     const drawPromises = [];
-                    for(let r=0; r<this.gridConfig.rows; r++) {
-                        for(let c=0; c<this.gridConfig.cols; c++) {
-                            const pUrl = this.gridData[r][c];
+
+                    // CASE A: Custom Zones (Only if no Grid Preset is selected)
+                    if (this.selectedProduct.grid_zones && this.selectedProduct.grid_zones.length > 0 && !this.selectedGridPresetId) {
+                        this.selectedProduct.grid_zones.forEach((zone, index) => {
+                            const pUrl = this.gridData[index];
                             if (pUrl) {
                                 drawPromises.push(new Promise((resolve) => {
                                     const img = new Image();
                                     img.onload = () => {
-                                        // Draw the texture repeating within this cell.
-                                        // A simple way is to create a repeating CanvasPattern.
+                                        const zX = (zone.x / 100) * drawWidth;
+                                        const zY = (zone.y / 100) * drawHeight;
+                                        const zW = (zone.w / 100) * drawWidth;
+                                        const zH = (zone.h / 100) * drawHeight;
+
                                         ptx.save();
                                         ptx.beginPath();
-                                        ptx.rect(c*cellWidth, r*cellHeight, cellWidth, cellHeight);
+                                        ptx.rect(zX, zY, zW, zH);
                                         ptx.clip();
                                         
                                         const pattern = ptx.createPattern(img, 'repeat');
-                                        
-                                        // IMPROVED SCALE: Instead of scaling per cell, scale relative to the 
-                                        // WHOLE canvas width so patterns look natural regardless of grid size.
-                                        // Target: Show roughly 3.5 repetitions across the entire product width.
                                         const targetSize = drawWidth / 3.5; 
                                         const scaleFactor = targetSize / img.width;
-                                        
                                         const domMatrix = new DOMMatrix().scale(scaleFactor, scaleFactor);
                                         pattern.setTransform(domMatrix);
                                         
                                         ptx.fillStyle = pattern;
-                                        ptx.fillRect(c*cellWidth, r*cellHeight, cellWidth, cellHeight);
+                                        ptx.fillRect(zX, zY, zW, zH);
                                         ptx.restore();
                                         resolve();
                                     };
-                                    img.onerror = resolve; // Continue on error
+                                    img.onerror = resolve;
                                     img.src = pUrl;
                                 }));
+                            }
+                        });
+                    } 
+                    // CASE B: Standard Grid
+                    else {
+                        const cellWidth = drawWidth / this.gridConfig.cols;
+                        const cellHeight = drawHeight / this.gridConfig.rows;
+                        
+                        for(let r=0; r<this.gridConfig.rows; r++) {
+                            for(let c=0; c<this.gridConfig.cols; c++) {
+                                const pUrl = this.gridData[r][c];
+                                if (pUrl) {
+                                    drawPromises.push(new Promise((resolve) => {
+                                        const img = new Image();
+                                        img.onload = () => {
+                                            ptx.save();
+                                            ptx.beginPath();
+                                            ptx.rect(c*cellWidth, r*cellHeight, cellWidth, cellHeight);
+                                            ptx.clip();
+                                            
+                                            const pattern = ptx.createPattern(img, 'repeat');
+                                            const targetSize = drawWidth / 3.5; 
+                                            const scaleFactor = targetSize / img.width;
+                                            const domMatrix = new DOMMatrix().scale(scaleFactor, scaleFactor);
+                                            pattern.setTransform(domMatrix);
+                                            
+                                            ptx.fillStyle = pattern;
+                                            ptx.fillRect(c*cellWidth, r*cellHeight, cellWidth, cellHeight);
+                                            ptx.restore();
+                                            resolve();
+                                        };
+                                        img.onerror = resolve;
+                                        img.src = pUrl;
+                                    }));
+                                }
                             }
                         }
                     }
                     
                     await Promise.all(drawPromises);
                     
-                    // 2. Render Main Composition
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    
-                    // (a) First, draw the grid patterns
                     ctx.drawImage(patternCanvas, 0, 0);
-                    
-                    // (b) Mask the patterns using destination-in with the base mask shape
                     ctx.globalCompositeOperation = 'destination-in';
                     ctx.drawImage(this.$refs.baseImage, 0, 0, canvas.width, canvas.height);
-                    
-                    // (c) Now switch to multiply to bake shadows
                     ctx.globalCompositeOperation = 'multiply';
                     ctx.drawImage(this.$refs.shadowOverlay, 0, 0, canvas.width, canvas.height);
-                    
-                    // (d) Switch back to normal
                     ctx.globalCompositeOperation = 'source-over';
-                    
-                    // (Optional) If there's an opaque frame (white base) we want to draw *underneath* 
-                    // the pattern so white is visible where pattern is missing:
                     ctx.globalCompositeOperation = 'destination-over';
                     ctx.drawImage(this.$refs.baseImage, 0, 0, canvas.width, canvas.height);
-                    
-                    // Reset
                     ctx.globalCompositeOperation = 'source-over';
                 }
             }));

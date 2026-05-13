@@ -30,7 +30,8 @@ class ProductController extends Controller
             'name' => 'required|string|max:100',
             'base_image' => 'required|image',
             'shadow_overlay' => 'required|image',
-            'grid_presets' => 'required|array'
+            'grid_presets' => 'nullable|array',
+            'grid_zones' => 'nullable|string'
         ]);
 
         $baseImagePath = $request->file('base_image')->store('products/base', 'public');
@@ -41,6 +42,7 @@ class ProductController extends Controller
             'name' => $request->name,
             'base_image' => $baseImagePath,
             'shadow_overlay' => $shadowImagePath,
+            'grid_zones' => $request->grid_zones ? json_decode($request->grid_zones, true) : null,
         ]);
 
         $product->gridPresets()->attach($request->grid_presets);
@@ -67,7 +69,8 @@ class ProductController extends Controller
             'name' => 'required|string|max:100',
             'base_image' => 'nullable|image',
             'shadow_overlay' => 'nullable|image',
-            'grid_presets' => 'required|array'
+            'grid_presets' => 'nullable|array',
+            'grid_zones' => 'nullable|string'
         ]);
 
         $baseImagePath = $product->base_image;
@@ -91,6 +94,7 @@ class ProductController extends Controller
             'name' => $request->name,
             'base_image' => $baseImagePath,
             'shadow_overlay' => $shadowImagePath,
+            'grid_zones' => $request->grid_zones ? json_decode($request->grid_zones, true) : null,
         ]);
 
         $product->gridPresets()->sync($request->grid_presets);
