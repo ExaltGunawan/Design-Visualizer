@@ -4,7 +4,6 @@
             {{ __('Batch Add Patterns') }}
         </h2>
     </x-slot>
-
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -15,7 +14,6 @@
                             For example, <code>batik_merah.jpg</code> will be saved as <strong>Batik Merah</strong>.
                         </p>
                     </div>
-
                     <form method="POST" action="{{ route('admin.patterns.batch.store') }}" enctype="multipart/form-data">
                         @csrf
                         <div class="mb-4">
@@ -23,7 +21,6 @@
                             <input class="shadow border rounded w-full py-2 px-3 text-gray-700" name="files[]" type="file" accept="image/*" multiple required>
                             <p class="text-xs text-gray-500 mt-2">You can select multiple files at once. Recommended: Seamlessly tileable JPG/PNG files.</p>
                         </div>
-
                         <div class="flex items-center justify-between mt-8">
                             <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow" type="submit">
                                 Upload & Create Patterns

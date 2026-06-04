@@ -4,7 +4,6 @@
             {{ __('Edit Product') }}
         </h2>
     </x-slot>
-
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -70,35 +69,25 @@
                                     @endforeach
                                 </div>
                             </div>
-
                             <div class="col-span-2 border-t pt-6 mt-4">
                                 <label class="block text-gray-700 text-sm font-bold mb-4 italic">Custom Grid Zones (Manual Mapping)</label>
                                 <p class="text-xs text-gray-500 mb-4"><strong>Option B:</strong> If you want to define specific areas (e.g., individual panels of a headboard or separate sofas), drag boxes on the image below.</p>
-                                
                                 <div x-data="zoneMapper(@js($product->grid_zones ?? []))" class="space-y-4">
                                     <input type="hidden" name="grid_zones" :value="JSON.stringify(zones)">
-                                    
                                     <div class="flex flex-col lg:flex-row gap-6">
-                                        <!-- Interactive Canvas -->
                                         <div class="relative bg-gray-200 border-2 border-gray-300 rounded shadow-inner overflow-hidden select-none cursor-crosshair" 
                                              x-ref="mapperContainer"
                                              style="width: 100%; max-width: 800px; min-height: 300px;"
                                              @mousedown.prevent="startDrawing($event)">
-                                            
-                                            <!-- Real Image Background (Guide) -->
                                             <img src="{{ Storage::url($product->shadow_overlay) }}" 
                                                  @load="adjustHeight()"
                                                  x-ref="mapperImage"
                                                  draggable="false"
                                                  class="block w-full h-auto pointer-events-none select-none"
                                                  style="z-index: 10;">
-
-                                            <!-- Mask Area Indicator (White Ghost) -->
                                             <img src="{{ Storage::url($product->base_image) }}" 
                                                  class="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
                                                  style="z-index: 15; opacity: 0.8;">
-                                            
-                                            <!-- Existing Zones -->
                                             <template x-for="(zone, index) in zones" :key="index">
                                                 <div class="absolute flex items-center justify-center group"
                                                      :style="`left: ${zone.x}%; top: ${zone.y}%; width: ${zone.w}%; height: ${zone.h}%; z-index: 100; border: 2.5px solid #ef4444; background-color: rgba(239, 68, 68, 0.35); box-shadow: 0 0 8px rgba(0,0,0,0.2);`"
@@ -109,14 +98,10 @@
                                                             class="group-hover:flex">×</button>
                                                 </div>
                                             </template>
-                                            
-                                            <!-- Current Drawing Box (while dragging) -->
                                             <div x-show="isDrawing" 
                                                  :style="`position: absolute; left: ${currentBox.x}%; top: ${currentBox.y}%; width: ${currentBox.w}%; height: ${currentBox.h}%; border: 3px solid #facc15; background-color: rgba(250, 204, 21, 0.3); z-index: 150; pointer-events: none; outline: 1px solid black; box-shadow: 0 0 10px rgba(0,0,0,0.5); display: block;` ">
                                             </div>
                                         </div>
-
-                                        <!-- Zones List -->
                                         <div class="w-full lg:w-64">
                                             <h3 class="text-xs font-bold uppercase text-gray-400 mb-2">Mapped Zones</h3>
                                             <div class="space-y-2 max-h-[450px] overflow-y-auto pr-2">
@@ -136,7 +121,6 @@
                                 </div>
                             </div>
                         </div>
-
                         <script>
                             function zoneMapper(initialZones) {
                                 return {
@@ -145,38 +129,26 @@
                                     startX: 0,
                                     startY: 0,
                                     currentBox: { x: 0, y: 0, w: 0, h: 0 },
-
                                     adjustHeight() {
-                                        // Image will define the height automatically
                                     },
-
                                     startDrawing(e) {
                                         const rect = this.$refs.mapperContainer.getBoundingClientRect();
                                         this.isDrawing = true;
                                         this.startX = ((e.clientX - rect.left) / rect.width) * 100;
                                         this.startY = ((e.clientY - rect.top) / rect.height) * 100;
                                         this.currentBox = { x: this.startX, y: this.startY, w: 0, h: 0 };
-
-                                        // Attach temporary global listeners
                                         this._onMove = (moveEvent) => this.draw(moveEvent);
                                         this._onUp = () => this.stopDrawing();
-                                        
                                         window.addEventListener('mousemove', this._onMove);
                                         window.addEventListener('mouseup', this._onUp);
                                     },
-
                                     draw(e) {
                                         if (!this.isDrawing) return;
                                         const rect = this.$refs.mapperContainer.getBoundingClientRect();
-                                        
-                                        // Clamp values between 0 and 100%
                                         let curX = ((e.clientX - rect.left) / rect.width) * 100;
                                         let curY = ((e.clientY - rect.top) / rect.height) * 100;
-                                        
                                         curX = Math.max(0, Math.min(100, curX));
                                         curY = Math.max(0, Math.min(100, curY));
-                                        
-                                        // Update object by replacement to trigger reactivity
                                         this.currentBox = {
                                             x: Math.min(this.startX, curX),
                                             y: Math.min(this.startY, curY),
@@ -184,20 +156,16 @@
                                             h: Math.abs(curY - this.startY)
                                         };
                                     },
-
                                     stopDrawing() {
                                         if (!this.isDrawing) return;
-                                        
                                         window.removeEventListener('mousemove', this._onMove);
                                         window.removeEventListener('mouseup', this._onUp);
-
                                         if (this.currentBox.w > 0.5 && this.currentBox.h > 0.5) {
                                             this.zones.push({...this.currentBox});
                                         }
                                         this.isDrawing = false;
                                         this.currentBox = { x: 0, y: 0, w: 0, h: 0 };
                                     },
-
                                     removeZone(index) {
                                         this.zones.splice(index, 1);
                                     }

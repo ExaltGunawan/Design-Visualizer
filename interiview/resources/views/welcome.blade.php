@@ -4,9 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>InteriView Prototype</title>
-    <!-- Tailwind CSS (via CDN for fast prototyping) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Fabric.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
         .pattern-item { cursor: grab; }
@@ -14,8 +12,6 @@
     </style>
 </head>
 <body class="bg-gray-100 h-screen overflow-hidden flex flex-col">
-
-    <!-- Header -->
     <header class="bg-white shadow px-6 py-4 flex justify-between items-center">
         <h1 class="text-2xl font-bold text-gray-800">InteriView Demo</h1>
         <div class="space-x-4">
@@ -30,76 +26,53 @@
             @endif
         </div>
     </header>
-
-    <!-- Main Content -->
     <main class="flex-1 flex overflow-hidden">
-        
-        <!-- Sidebar Left: Settings -->
         <aside class="w-64 bg-white border-r border-gray-200 p-4 flex flex-col overflow-y-auto">
-            
             <div class="mb-6">
                 <h3 class="font-semibold text-gray-700 mb-2">1. Select Product</h3>
                 <select id="product-selector" class="w-full border-gray-300 rounded shadow-sm p-2 bg-gray-50">
                     <option value="">Loading products...</option>
                 </select>
             </div>
-
             <div class="mb-6">
                 <h3 class="font-semibold text-gray-700 mb-2">2. Select Grid</h3>
                 <select id="grid-selector" class="w-full border-gray-300 rounded shadow-sm p-2 bg-gray-50" disabled>
                     <option value="">Select a product first</option>
                 </select>
             </div>
-
             <div class="flex-1">
                 <h3 class="font-semibold text-gray-700 mb-2">3. Patterns (Drag to Grid)</h3>
                 <div id="pattern-list" class="grid grid-cols-2 gap-2">
-                    <!-- Patterns will be loaded here -->
                     <div class="text-sm text-gray-500">Loading...</div>
                 </div>
             </div>
-
         </aside>
-
-        <!-- Main Workspace: Canvas -->
         <section class="flex-1 bg-gray-200 flex justify-center items-center relative" id="canvas-container">
-            <!-- Wrapper for proper centering and mouse events -->
             <div class="shadow-lg bg-white relative" style="width: 500px; height: 500px;">
                 <canvas id="main-canvas" width="500" height="500"></canvas>
             </div>
             <p class="absolute bottom-4 text-gray-500 bg-white px-3 py-1 rounded shadow text-sm">Drag a pattern and drop it over a grid cell.</p>
         </section>
     </main>
-
-    <!-- App Logic -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // State
             let products = [];
             let patterns = [];
             let currentProduct = null;
             let currentGrid = null;
             let draggedPatternUrl = null;
             let gridRects = []; // Store fabric Rect objects for drop detection
-
-            // UI Elements
             const productSelect = document.getElementById('product-selector');
             const gridSelect = document.getElementById('grid-selector');
             const patternList = document.getElementById('pattern-list');
             const btnReset = document.getElementById('btn-reset');
             const btnDownload = document.getElementById('btn-download');
-
-            // Initialize Fabric Canvas
             const canvas = new fabric.Canvas('main-canvas', {
                 preserveObjectStacking: true, // Keep shadow on top
                 selection: false // Disable group selection
             });
-
-            // Layer holders
             let baseImageLayer = null;
             let shadowOverlayLayer = null;
-
-            // 1. Fetch Data
             Promise.all([
                 fetch('/api/products').then(res => res.json()),
                 fetch('/api/patterns').then(res => res.json())
@@ -109,8 +82,6 @@
                 renderProducts();
                 renderPatterns();
             });
-
-            // 2. Render UI
             function renderProducts() {
                 productSelect.innerHTML = '<option value="">-- Choose Product --</option>';
                 products.forEach(p => {
@@ -120,7 +91,6 @@
                     productSelect.appendChild(opt);
                 });
             }
-
             function renderPatterns() {
                 patternList.innerHTML = '';
                 patterns.forEach(pat => {
@@ -130,23 +100,17 @@
                     img.title = pat.name;
                     img.className = 'w-full h-24 object-cover rounded border hover:border-blue-500 pattern-item';
                     img.draggable = true;
-                    
-                    // Native HTML5 Drag and Drop
                     img.addEventListener('dragstart', (e) => {
                         draggedPatternUrl = img.src;
                         e.dataTransfer.setData('text/plain', pat.id); // Required for Firefox Firefox
                         e.dataTransfer.effectAllowed = 'copy';
                     });
-                    
                     patternList.appendChild(img);
                 });
             }
-
-            // 3. Handle Product Change
             productSelect.addEventListener('change', (e) => {
                 const pid = parseInt(e.target.value);
                 currentProduct = products.find(p => p.id === pid);
-                
                 if (currentProduct) {
                     renderGridOptions();
                     loadProductCanvas();
@@ -156,8 +120,6 @@
                     gridSelect.disabled = true;
                 }
             });
-
-            // 4. Handle Grid Options
             function renderGridOptions() {
                 gridSelect.innerHTML = '';
                 if (currentProduct.grid_presets && currentProduct.grid_presets.length > 0) {
@@ -169,7 +131,6 @@
                     });
                     gridSelect.disabled = false;
                     currentGrid = currentProduct.grid_presets[0]; // Auto select first
-                    // Re-draw grid based on selection later, for now just draw it
                     drawGridOnCanvas();
                 } else {
                     gridSelect.innerHTML = '<option value="">No grids available</option>';
@@ -177,23 +138,16 @@
                     currentGrid = null;
                 }
             }
-
             gridSelect.addEventListener('change', (e) => {
                 const gid = parseInt(e.target.value);
                 currentGrid = currentProduct.grid_presets.find(g => g.id === gid);
                 drawGridOnCanvas();
             });
-
-            // 5. Canvas Implementation
             function loadProductCanvas() {
                 canvas.clear();
                 gridRects = [];
-
-                // Size of our canvas
                 const canvasW = canvas.width;
                 const canvasH = canvas.height;
-
-                // Load Base
                 fabric.Image.fromURL('/storage/' + currentProduct.base_image, function(img) {
                     img.set({
                         left: 0,
@@ -206,11 +160,7 @@
                     baseImageLayer = img;
                     canvas.add(img);
                     img.sendToBack();
-
-                    // After base loaded, draw grid
                     if(currentGrid) drawGridOnCanvas();
-
-                    // Load Shadow Overlay on TOP
                     fabric.Image.fromURL('/storage/' + currentProduct.shadow_overlay, function(shadow) {
                         shadow.set({
                             left: 0,
@@ -228,21 +178,14 @@
                     });
                 });
             }
-
             function drawGridOnCanvas() {
                 if (!baseImageLayer || !currentGrid) return;
-
-                // Remove old grid rects
                 gridRects.forEach(rect => canvas.remove(rect));
                 gridRects = [];
-
                 const cols = currentGrid.colss;
                 const rows = currentGrid.rowss;
-                
-                // Calculate cell dimensions
                 const cellW = canvas.width / cols;
                 const cellH = canvas.height / rows;
-
                 for (let r = 0; r < rows; r++) {
                     for (let c = 0; c < cols; c++) {
                         const rect = new fabric.Rect({
@@ -256,17 +199,13 @@
                             strokeDashArray: [5, 5],
                             selectable: false,
                             hoverCursor: 'crosshair',
-                            // Custom properties
                             isGridCell: true,
                             gridX: c,
                             gridY: r,
                             globalCompositeOperation: 'source-atop'
                         });
-                        
                         gridRects.push(rect);
                         canvas.add(rect);
-                        
-                        // Ensure it stays below shadow but above base
                         if (shadowOverlayLayer) {
                             shadowOverlayLayer.bringToFront();
                         }
@@ -274,71 +213,47 @@
                 }
                 canvas.requestRenderAll();
             }
-
-            // 6. Handle Drag and Drop on Canvas Container
             const container = document.getElementById('canvas-container');
-            
             container.addEventListener('dragover', (e) => {
                 e.preventDefault(); // allow dropping
                 e.dataTransfer.dropEffect = 'copy';
             });
-
             container.addEventListener('drop', (e) => {
                 e.preventDefault();
                 if (!draggedPatternUrl) return;
-
-                // Calculate mouse position relative to canvas
                 const rect = canvas.lowerCanvasEl.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
-
-                // Find which grid cell was dropped on
-                // Note: Fabric's findTarget is hard to use during native DOM drag/drop events.
-                // We'll calculate it mathematically.
                 if(!currentGrid) return;
-                
                 const cols = currentGrid.colss;
                 const rows = currentGrid.rowss;
                 const cellW = canvas.width / cols;
                 const cellH = canvas.height / rows;
-
                 const targetCol = Math.floor(x / cellW);
                 const targetRow = Math.floor(y / cellH);
-
-                // Ensure it's inside bounds
                 if(targetCol >= 0 && targetCol < cols && targetRow >= 0 && targetRow < rows) {
                     const targetRect = gridRects.find(r => r.gridX === targetCol && r.gridY === targetRow);
                     if(targetRect) {
                         applyPatternToCell(targetRect, draggedPatternUrl, currentGrid.scale_value);
                     }
                 }
-                
                 draggedPatternUrl = null;
             });
-
             function applyPatternToCell(rect, patternUrl, scaleValue) {
                 fabric.util.loadImage(patternUrl, function(img) {
                     const pattern = new fabric.Pattern({
                         source: img,
                         repeat: 'repeat'
                     });
-                    
-                    // Apply scale from the grid preset
-                    // Note: Fabric.js Pattern offsetX/offsetY might be needed for perfect tiling
-                    // but scaling transform matrix handles the size
                     pattern.patternTransform = [scaleValue, 0, 0, scaleValue, 0, 0];
-
                     rect.set('fill', pattern);
                     rect.set('strokeWidth', 0); // remove dashed border
                     canvas.requestRenderAll();
                 });
             }
-
-            // 7. Action Buttons
             btnReset.addEventListener('click', () => {
                 drawGridOnCanvas(); // Redrawing clears the patterns
             });
-
             btnDownload.addEventListener('click', () => {
                 const dataURL = canvas.toDataURL({
                     format: 'png',
@@ -351,7 +266,6 @@
                 link.click();
                 document.body.removeChild(link);
             });
-
         });
     </script>
 </body>
