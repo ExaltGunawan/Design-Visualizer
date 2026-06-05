@@ -10,11 +10,13 @@ use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\GridPresetController;
 use App\Http\Controllers\Admin\PatternController;
 use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\UserController;
 Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(function () {
     Route::resource('categories', CategoryController::class);
+    Route::resource('users', UserController::class);
     Route::resource('products', ProductController::class);
     Route::get('patterns/batch', [PatternController::class, 'batchCreate'])->name('patterns.batch');
     Route::post('patterns/batch', [PatternController::class, 'batchStore'])->name('patterns.batch.store');

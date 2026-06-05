@@ -369,9 +369,8 @@
                                         ptx.rect(zX, zY, zW, zH);
                                         ptx.clip();
                                         const pattern = ptx.createPattern(img, 'repeat');
-                                        const targetSize = drawWidth / 3.5; 
-                                        const scaleFactor = targetSize / img.width;
-                                        const domMatrix = new DOMMatrix().scale(scaleFactor, scaleFactor);
+                                        const scaleFactor = Math.min(zW / img.width, zH / img.height);
+                                        const domMatrix = new DOMMatrix().translate(zX, zY).scale(scaleFactor, scaleFactor);
                                         pattern.setTransform(domMatrix);
                                         ptx.fillStyle = pattern;
                                         ptx.fillRect(zX, zY, zW, zH);
@@ -399,9 +398,8 @@
                                             ptx.rect(c*cellWidth, r*cellHeight, cellWidth, cellHeight);
                                             ptx.clip();
                                             const pattern = ptx.createPattern(img, 'repeat');
-                                            const targetSize = drawWidth / 3.5; 
-                                            const scaleFactor = targetSize / img.width;
-                                            const domMatrix = new DOMMatrix().scale(scaleFactor, scaleFactor);
+                                            const scaleFactor = Math.min(cellWidth / img.width, cellHeight / img.height);
+                                            const domMatrix = new DOMMatrix().translate(c*cellWidth, r*cellHeight).scale(scaleFactor, scaleFactor);
                                             pattern.setTransform(domMatrix);
                                             ptx.fillStyle = pattern;
                                             ptx.fillRect(c*cellWidth, r*cellHeight, cellWidth, cellHeight);
